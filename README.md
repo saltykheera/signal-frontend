@@ -21,7 +21,7 @@ End-to-end cryptography is simulated, as permitted by the assignment.
 
 ## Tech stack
 
-- Frontend: Next.js 16, React, TypeScript, CSS
+- Frontend: Next.js 16, React, TypeScript, Zustand, CSS
 - Backend: FastAPI, Python, raw SQLite SQL, PyJWT
 - Real-time: FastAPI WebSockets with in-process per-user fan-out
 - Storage: SQLite and local files under `signal-backend/uploads/`
@@ -67,9 +67,12 @@ reactions, and read receipts.
 
 ## Architecture
 
-The frontend keeps server records canonical. `lib/api.ts` owns the HTTP contract;
-`pages/SignalReplicaApp.tsx` coordinates authentication, loading, optimistic sends,
-WebSocket reconnection, and navigation. UI stays grouped by product domain.
+The frontend keeps server records canonical. `lib/api.ts` owns the HTTP contract.
+`stores/messenger-store.ts` is a typed Zustand vanilla store containing auth,
+conversation/contact/message caches, loading and error state, optimistic mutations,
+and WebSocket reconciliation. A per-app context provider keeps it safe for Next.js
+App Router rendering and preserves it across navigation. `pages/SignalReplicaApp.tsx`
+is now a thin layout coordinator. UI stays grouped by product domain.
 
 The backend follows route → service → repository layering. Routes handle
 transport and event fan-out, services enforce business rules/authorization, and
