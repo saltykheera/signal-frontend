@@ -12,7 +12,7 @@ backend in the sibling `signal-clone/signal-backend` directory.
 - Real-time message delivery, typing, presence, and read-receipt updates over an
   authenticated WebSocket
 - Sending/delivered/read states, unread counts, timestamps, reactions, images,
-  videos, and file attachments (10 MB maximum)
+  videos, and shadcn/ui file/image attachment cards with upload states (10 MB maximum)
 - Group member view with administrator add/remove controls
 - Seeded users/history, light and dark appearance, responsive layouts, and Calls
   and Stories placeholders

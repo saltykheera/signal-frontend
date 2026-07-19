@@ -7,6 +7,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Icon } from "@/components/ui/Icon";
 import { AttachmentMenu } from "@/components/chat/AttachmentMenu";
 import { MessageBubble } from "@/components/chat/MessageBubble";
+import { MessageAttachment } from "@/components/chat/MessageAttachment";
 import { DeleteMessageDialog } from "@/components/chat/DeleteMessageDialog";
 
 type ChatPanelProps = {
@@ -34,18 +35,27 @@ export function ChatPanel({ conversation, messages, currentUser, contacts, token
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [pendingAttachment, setPendingAttachment] = useState<{ file: File; previewUrl: string | null; state: "uploading" | "error" } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const attachmentControlRef = useRef<HTMLDivElement>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingUrlRef = useRef<string | null>(null);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages.length]);
   useEffect(() => {
-    const timer = setTimeout(() => { setDraft(""); setDetailsOpen(false); }, 0);
+    const timer = setTimeout(() => {
+      setDraft(""); setDetailsOpen(false); setPendingAttachment(null);
+      if (pendingUrlRef.current) URL.revokeObjectURL(pendingUrlRef.current);
+      pendingUrlRef.current = null;
+    }, 0);
     return () => clearTimeout(timer);
   }, [conversation.id]);
-  useEffect(() => () => { if (typingTimer.current) clearTimeout(typingTimer.current); }, []);
+  useEffect(() => () => {
+    if (typingTimer.current) clearTimeout(typingTimer.current);
+    if (pendingUrlRef.current) URL.revokeObjectURL(pendingUrlRef.current);
+  }, []);
 
   useEffect(() => {
     if (!attachmentOpen) return;
@@ -82,10 +92,20 @@ export function ChatPanel({ conversation, messages, currentUser, contacts, token
     setAttachmentOpen(false);
     if (!file) return;
     if (file.size > 10 * 1024 * 1024) { onError("Attachments must be 10 MB or smaller."); return; }
+    if (pendingUrlRef.current) URL.revokeObjectURL(pendingUrlRef.current);
+    const previewUrl = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
+    pendingUrlRef.current = previewUrl;
+    setPendingAttachment({ file, previewUrl, state: "uploading" });
     setSending(true);
-    try { await onSendAttachment(file); }
-    catch (error) { onError(error instanceof Error ? error.message : "Attachment could not be sent."); }
+    try { await onSendAttachment(file); clearPendingAttachment(); }
+    catch (error) { setPendingAttachment((current) => current ? { ...current, state: "error" } : null); onError(error instanceof Error ? error.message : "Attachment could not be sent."); }
     finally { setSending(false); }
+  }
+
+  function clearPendingAttachment() {
+    if (pendingUrlRef.current) URL.revokeObjectURL(pendingUrlRef.current);
+    pendingUrlRef.current = null;
+    setPendingAttachment(null);
   }
 
   return (
@@ -105,6 +125,7 @@ export function ChatPanel({ conversation, messages, currentUser, contacts, token
       {infoMessage && <div className="message-info-backdrop" role="presentation"><section className="message-info-dialog" role="dialog" aria-modal="true" aria-labelledby="message-info-title"><h2 id="message-info-title">Message info</h2><p>{infoMessage.outgoing ? "Sent" : "Received"} at {infoMessage.time}</p><p>Status: {infoMessage.status || "sent"}</p><button type="button" onClick={() => setInfoMessage(null)}>Done</button></section></div>}
       {pendingDeleteId !== null && <DeleteMessageDialog onCancel={() => setPendingDeleteId(null)} onConfirm={() => { void onDeleteMessage(pendingDeleteId); setPendingDeleteId(null); }} />}
       {detailsOpen && <ConversationDetails conversation={conversation} token={token} currentUser={currentUser} contacts={contacts} onClose={() => setDetailsOpen(false)} onChanged={onConversationChanged} onError={onError} />}
+      {pendingAttachment && <div className="composer-attachment-tray"><MessageAttachment file={pendingAttachment.file} previewUrl={pendingAttachment.previewUrl} messageType={pendingAttachment.file.type.startsWith("image/") ? "image" : pendingAttachment.file.type.startsWith("video/") ? "video" : "file"} state={pendingAttachment.state} onRemove={pendingAttachment.state === "error" ? clearPendingAttachment : undefined} /></div>}
       <footer className="composer-bar"><input ref={photoInputRef} className="attachment-file-input" type="file" accept="image/*,video/*" onChange={selectAttachment} /><input ref={fileInputRef} className="attachment-file-input" type="file" onChange={selectAttachment} /><button className="icon-button composer-external" aria-label="Emoji picker"><Icon name="emoji" size={22} /></button><div className="composer-field"><textarea value={draft} onChange={(event) => updateDraft(event.target.value)} onKeyDown={composerKeyDown} placeholder="Message" rows={1} aria-label="Message" disabled={sending} /></div><div ref={attachmentControlRef} className="attachment-control">{attachmentOpen && <AttachmentMenu onPhotos={() => photoInputRef.current?.click()} onFile={() => fileInputRef.current?.click()} />}<button className="icon-button composer-external" onClick={() => setAttachmentOpen((open) => !open)} aria-label="Add attachment" aria-expanded={attachmentOpen} disabled={sending}><Icon name="plus" size={22} /></button></div></footer>
     </section>
   );
