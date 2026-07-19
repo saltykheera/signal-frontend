@@ -2882,9 +2882,11 @@ button.settings-row:hover {
 .app-toast { position: fixed; z-index: 1000; right: 24px; bottom: 24px; max-width: min(380px, calc(100vw - 32px)); padding: 11px 15px; border-radius: 10px; background: #242424; box-shadow: 0 8px 28px rgba(0, 0, 0, .24); color: white; font-size: 13px; line-height: 18px; }
 .chat-loading { padding: 42px 0; color: var(--text-secondary); font-size: 13px; text-align: center; }
 .message-sender { display: block; margin-bottom: 3px; color: var(--accent); font-size: 11px; font-weight: 600; }
-.message-status { min-width: 12px; font-size: 11px; letter-spacing: -2px; }
+.message-status { display: inline-flex; min-width: 12px; align-items: center; justify-content: center; font-size: 11px; letter-spacing: -2px; }
 .message-status.sending { letter-spacing: 0; }
 .message-status.failed { color: #ffb4ad; letter-spacing: 0; font-weight: 700; }
+.message-receipt-icon { width: 12px !important; height: 12px !important; filter: invert(1) !important; opacity: 1 !important; }
+:root[data-theme="dark"] .message-row.outgoing .message-meta .message-receipt-icon { filter: none !important; }
 .chat-panel { position: relative; }
 
 /* shadcn/ui Attachment, adapted to the existing non-Tailwind Signal theme. */
@@ -2906,7 +2908,7 @@ button.settings-row:hover {
   white-space: normal;
 }
 
-.shadcn-attachment[data-orientation="horizontal"] { min-width: 210px; align-items: center; padding: 7px; }
+.shadcn-attachment[data-orientation="horizontal"] { min-width: 300px; align-items: center; padding: 7px; }
 .shadcn-attachment[data-orientation="vertical"] { width: min(220px, 50vw); flex-direction: column; gap: 0; overflow: hidden; }
 .shadcn-attachment[data-size="xs"] { gap: 6px; border-radius: 9px; padding: 4px; font-size: 11px; }
 .shadcn-attachment[data-state="idle"] { border-style: dashed; }
@@ -2958,16 +2960,21 @@ button.settings-row:hover {
 .message-bubble.has-attachment .message-body { width: 100%; padding: 0 11px 8px; }
 .message-bubble.has-attachment .message-meta { align-self: flex-end; margin-right: 11px; }
 .message-bubble .message-attachment-card { width: 100%; max-width: 100%; padding: 0; overflow: hidden; border: 0; border-radius: 0; background: transparent; }
-.message-bubble.attachment-file,
+.message-bubble.attachment-file { width: min(320px, 72vw); min-width: min(320px, 72vw); padding: 0; }
 .message-bubble.attachment-video { min-width: 0; padding: 0; }
 .message-bubble.attachment-image { min-width: 0; width: min(220px, 50vw); }
 .message-bubble.attachment-image .message-attachment-card { width: min(220px, 50vw); }
-.message-bubble.attachment-file .message-attachment-card,
+.message-bubble.attachment-file .message-attachment-card { width: 100%; min-width: 0; gap: 11px; padding: 10px 12px; border-radius: 16px; background: rgba(0, 0, 0, .055); }
 .message-bubble.attachment-video .message-attachment-card { width: auto; min-width: 0; }
-.message-bubble.attachment-file .shadcn-attachment-media,
+.message-bubble.attachment-file .shadcn-attachment-media { width: 42px; border-radius: 12px; }
+.message-bubble.attachment-file .shadcn-attachment-content { padding: 1px 0; }
+.message-bubble.attachment-file .shadcn-attachment-title { font-size: 13px; line-height: 17px; }
+.message-bubble.attachment-file .shadcn-attachment-description { margin-top: 2px; font-size: 11px; line-height: 15px; }
 .message-bubble.attachment-video .shadcn-attachment-media { width: 46px; border-radius: 14px; }
 .message-row.outgoing .message-attachment-card { border: 0; background: transparent; color: #fff; }
 .message-row.outgoing .message-attachment-card:hover { background: transparent; }
+.message-row.outgoing .message-bubble.attachment-file .message-attachment-card,
+.message-row.outgoing .message-bubble.attachment-file .message-attachment-card:hover { background: rgba(255, 255, 255, .14); }
 .message-row.outgoing .message-attachment-card .shadcn-attachment-media { background: rgba(255, 255, 255, .14); color: #fff; }
 .message-row.outgoing .message-attachment-card .shadcn-attachment-description { color: rgba(255, 255, 255, .72); }
 

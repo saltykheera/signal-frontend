@@ -21,6 +21,7 @@ const iconPaths = {
   mic: "/icons/mic/mic.svg",
   emoji: "/icons/emoji/emoji.svg",
   check: "/icons/message_status/messagestatus-read.svg",
+  checkCircleFill: "/icons/check/check-circle-fill.svg",
   person: "/icons/person/person.svg",
   edit: "/icons/edit/edit.svg",
   at: "/icons/at/at.svg",

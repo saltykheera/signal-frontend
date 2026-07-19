@@ -51,11 +51,13 @@ export function MessageAttachment({ attachment, file, previewUrl, messageType, s
   const mime = file?.type || attachment?.mime_type;
   const size = file?.size ?? attachment?.file_size;
   const isImage = messageType === "image" || mime?.startsWith("image/");
-  const remoteUrl = attachment?.file_url ? `${API_BASE}${attachment.file_url}` : null;
+  const remoteUrl = attachment?.file_url
+    ? (/^https?:\/\//i.test(attachment.file_url) ? attachment.file_url : `${API_BASE}${attachment.file_url}`)
+    : null;
   const url = previewUrl || remoteUrl;
   const status = state === "uploading" ? "Uploading…" : state === "processing" ? "Processing…" : state === "error" ? "Upload failed" : fileKind(name, mime);
   const description = [status, formatFileSize(size)].filter(Boolean).join(" · ");
-  const showDetails = Boolean(file) || state !== "done";
+  const showDetails = !isImage;
 
   return <Attachment className="message-attachment-card" state={state} size="sm" orientation={isImage ? "vertical" : "horizontal"}>
     <AttachmentMedia variant={isImage && url ? "image" : "icon"}>
