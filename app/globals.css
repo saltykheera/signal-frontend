@@ -2885,8 +2885,9 @@ button.settings-row:hover {
 .message-status { display: inline-flex; min-width: 12px; align-items: center; justify-content: center; font-size: 11px; letter-spacing: -2px; }
 .message-status.sending { letter-spacing: 0; }
 .message-status.failed { color: #ffb4ad; letter-spacing: 0; font-weight: 700; }
-.message-receipt-icon { width: 12px !important; height: 12px !important; filter: invert(1) !important; opacity: 1 !important; }
-:root[data-theme="dark"] .message-row.outgoing .message-meta .message-receipt-icon { filter: none !important; }
+.message-receipt-icons { display: inline-flex; align-items: center; }
+.message-receipt-icon { flex: 0 0 auto; width: 12px !important; height: 12px !important; filter: invert(1) !important; opacity: 1 !important; }
+.message-receipt-icon + .message-receipt-icon { margin-left: -3px; }
 .chat-panel { position: relative; }
 
 /* shadcn/ui Attachment, adapted to the existing non-Tailwind Signal theme. */

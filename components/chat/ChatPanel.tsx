@@ -119,7 +119,7 @@ export function ChatPanel({ conversation, messages, currentUser, contacts, token
           const next = messages[index + 1];
           const first = !previous || previous.outgoing !== message.outgoing;
           const last = !next || next.outgoing !== message.outgoing;
-          return <div key={message.id} className={`message-row ${message.outgoing ? "outgoing" : "incoming"} ${first ? "cluster-first" : ""} ${last ? "cluster-last" : ""}`}><MessageBubble message={message} showSender={Boolean(conversation.group)} onDelete={() => setPendingDeleteId(message.id)} onInfo={() => setInfoMessage(message)} onToggleReaction={(emoji) => onToggleReaction(message.id, emoji)} /></div>;
+          return <div key={message.id} className={`message-row ${message.outgoing ? "outgoing" : "incoming"} ${first ? "cluster-first" : ""} ${last ? "cluster-last" : ""}`}><MessageBubble message={message} showSender={Boolean(conversation.group)} isDirectConversation={!conversation.group} onDelete={() => setPendingDeleteId(message.id)} onInfo={() => setInfoMessage(message)} onToggleReaction={(emoji) => onToggleReaction(message.id, emoji)} /></div>;
         })}<div ref={bottomRef} /></div>}
       </div>
       {infoMessage && <div className="message-info-backdrop" role="presentation"><section className="message-info-dialog" role="dialog" aria-modal="true" aria-labelledby="message-info-title"><h2 id="message-info-title">Message info</h2><p>{infoMessage.outgoing ? "Sent" : "Received"} at {infoMessage.time}</p><p>Status: {infoMessage.status || "sent"}</p><button type="button" onClick={() => setInfoMessage(null)}>Done</button></section></div>}

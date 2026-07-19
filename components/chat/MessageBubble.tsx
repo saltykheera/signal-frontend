@@ -9,6 +9,7 @@ import { Bubble, BubbleContent, BubbleReactions } from "@/components/ui/bubble";
 type MessageBubbleProps = {
   message: Message;
   showSender?: boolean;
+  isDirectConversation: boolean;
   onDelete: () => void;
   onInfo: () => void;
   onToggleReaction: (emoji: string) => void;
@@ -16,11 +17,12 @@ type MessageBubbleProps = {
 
 const reactionChoices = ["👍", "❤️", "😂", "😮"];
 
-export function MessageBubble({ message, showSender, onDelete, onInfo, onToggleReaction }: MessageBubbleProps) {
+export function MessageBubble({ message, showSender, isDirectConversation, onDelete, onInfo, onToggleReaction }: MessageBubbleProps) {
   const [panel, setPanel] = useState<"reactions" | "menu" | null>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
   const groupedReactions = useMemo(() => Object.entries((message.reactions || []).reduce<Record<string, number>>((counts, reaction) => ({ ...counts, [reaction.emoji]: (counts[reaction.emoji] || 0) + 1 }), {})), [message.reactions]);
   const messageStatus = message.status || "sent";
+  const receiptCount = isDirectConversation && messageStatus === "read" ? 2 : 1;
 
   useEffect(() => {
     if (!panel) return;
@@ -43,7 +45,7 @@ export function MessageBubble({ message, showSender, onDelete, onInfo, onToggleR
         {showSender && !message.outgoing && message.senderName && <strong className="message-sender">{message.senderName}</strong>}
         {message.attachment && <MessageAttachment attachment={message.attachment} messageType={message.messageType} />}
         {message.body && <span className="message-body">{message.body}</span>}
-        {!message.attachment && <span className="message-meta"><time>{message.time}</time>{message.outgoing && <span className={`message-status ${messageStatus}`} title={messageStatus}>{messageStatus === "sending" ? "○" : messageStatus === "failed" ? "!" : <Icon name="checkCircleFill" size={12} className="message-receipt-icon" />}</span>}</span>}
+        {!message.attachment && <span className="message-meta"><time>{message.time}</time>{message.outgoing && <span className={`message-status ${messageStatus}`} title={messageStatus}>{messageStatus === "sending" ? "○" : messageStatus === "failed" ? "!" : <span className="message-receipt-icons">{Array.from({ length: receiptCount }, (_, index) => <Icon key={index} name="checkCircleFill" size={12} className="message-receipt-icon" />)}</span>}</span>}</span>}
       </BubbleContent>
       {groupedReactions.length > 0 && <BubbleReactions className="signal-bubble-reactions" align={message.outgoing ? "start" : "end"} aria-label="Message reactions">{groupedReactions.map(([emoji, count]) => <button type="button" key={emoji} onClick={() => onToggleReaction(emoji)}>{emoji}{count > 1 ? ` ${count}` : ""}</button>)}</BubbleReactions>}
     </Bubble>

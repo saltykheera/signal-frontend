@@ -128,6 +128,28 @@ export function createMessengerStore() {
       get().showToast(error instanceof Error ? error.message : fallback);
     }
 
+    async function markMessagesRead(conversationId: ConversationId, messageIds: number[]) {
+      const token = get().authToken;
+      if (!token || messageIds.length === 0) return false;
+
+      const results = await Promise.allSettled(messageIds.map((messageId) => signalApi.markRead(token, messageId)));
+      const failed = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
+      if (failed) {
+        report(failed.reason, "Messages could not be marked as read.");
+        return false;
+      }
+
+      // Clear the shared sidebar badge immediately, then reconcile from the server
+      // only after its receipt transaction has completed.
+      set((state) => ({
+        conversations: state.conversations.map((conversation) => (
+          conversation.id === conversationId ? { ...conversation, unread: undefined } : conversation
+        )),
+      }));
+      await get().loadConversations();
+      return true;
+    }
+
     return {
       ...initialState,
 
@@ -251,8 +273,7 @@ export function createMessengerStore() {
           const rows = await signalApi.messages(token, Number(id));
           set((state) => ({ messages: { ...state.messages, [id]: rows.map((row) => mapMessage(row, currentUser.id)) } }));
           const unread = rows.filter((row) => row.sender_id !== currentUser.id && !row.receipts.some((receipt) => receipt.user_id === currentUser.id && receipt.read_at));
-          await Promise.allSettled(unread.map((row) => signalApi.markRead(token, row.id)));
-          if (unread.length) await get().loadConversations();
+          await markMessagesRead(id, unread.map((row) => row.id));
         } catch (error) { report(error, "Messages could not be loaded."); }
         finally { if (get().loadingConversationId === id) set({ loadingConversationId: null }); }
       },
@@ -360,8 +381,11 @@ export function createMessengerStore() {
             const apiMessage = payload.message as ApiMessage;
             const id = String(apiMessage.conversation_id);
             set((state) => ({ messages: { ...state.messages, [id]: [...(state.messages[id] || []).filter((message) => message.id !== apiMessage.id), mapMessage(apiMessage, currentUser.id)] } }));
-            if (get().selectedConversationId === id && apiMessage.sender_id !== currentUser.id) void signalApi.markRead(token, apiMessage.id);
-            void get().loadConversations();
+            if (get().selectedConversationId === id && apiMessage.sender_id !== currentUser.id) {
+              void markMessagesRead(id, [apiMessage.id]);
+            } else {
+              void get().loadConversations();
+            }
           } else if (payload.type === "message.deleted") {
             const id = String(payload.conversation_id), messageId = Number(payload.message_id);
             set((state) => ({ messages: { ...state.messages, [id]: (state.messages[id] || []).filter((message) => message.id !== messageId) } }));
