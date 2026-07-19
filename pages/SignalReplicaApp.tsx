@@ -53,8 +53,11 @@ export function SignalReplicaAppView({ initialTab = "chats" }: { initialTab?: Ap
     loadContacts: state.loadContacts,
     addContact: state.addContact,
     showToast: state.showToast,
-  })));
+  }))); 
   const initialize = store.initialize;
+  const conversations = store.conversations;
+  const selectedConversationId = store.selectedConversationId;
+  const selectConversation = store.selectConversation;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -65,6 +68,48 @@ export function SignalReplicaAppView({ initialTab = "chats" }: { initialTab?: Ap
     return () => clearTimeout(timer);
   }, [initialize]);
   useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
+  useEffect(() => {
+    function isEditableTarget(target: EventTarget | null) {
+      return target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
+    }
+
+    function handleShortcut(event: KeyboardEvent) {
+      const key = event.key.toLowerCase();
+      const modifier = event.metaKey || event.ctrlKey;
+      if (modifier && key === "k") {
+        event.preventDefault();
+        setTab("chats");
+        setNewChatOpen(true);
+        setMobileChatOpen(false);
+        return;
+      }
+      if (modifier && key === ",") {
+        event.preventDefault();
+        router.push("/settings");
+        return;
+      }
+      if (modifier && key === "f" && tab === "chats" && !newChatOpen) {
+        event.preventDefault();
+        window.dispatchEvent(new Event("signal:focus-conversation-search"));
+        return;
+      }
+      if (event.key === "Escape" && newChatOpen) {
+        setNewChatOpen(false);
+        return;
+      }
+      if (isEditableTarget(event.target) || modifier || !event.altKey || tab !== "chats" || newChatOpen || !conversations.length) return;
+      if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+      event.preventDefault();
+      const currentIndex = conversations.findIndex((conversation) => conversation.id === selectedConversationId);
+      const offset = event.key === "ArrowDown" ? 1 : -1;
+      const nextIndex = (Math.max(currentIndex, 0) + offset + conversations.length) % conversations.length;
+      selectConversation(conversations[nextIndex].id);
+      setMobileChatOpen(true);
+    }
+
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, [conversations, newChatOpen, router, selectConversation, selectedConversationId, tab]);
 
   async function handleStartChat(user: ApiUser) {
     if (await store.startChat(user)) {

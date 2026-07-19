@@ -1,6 +1,6 @@
 "use client";
 
-import { type ChangeEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from "react";
 import type { ApiConversationDetail, ApiConversationMember, ApiUser, Conversation, Message } from "@/types/messenger";
 import { signalApi } from "@/lib/api";
 import { Avatar } from "@/components/ui/Avatar";
@@ -79,6 +79,24 @@ export function ChatPanel({ conversation, messages, currentUser, contacts, token
     return () => cancelAnimationFrame(frame);
   }, [restoreComposerFocus, sending]);
 
+  useEffect(() => {
+    function handleShortcut(event: globalThis.KeyboardEvent) {
+      const modifier = event.metaKey || event.ctrlKey;
+      if (modifier && event.key.toLowerCase() === "e") {
+        event.preventDefault();
+        composerInputRef.current?.focus();
+        return;
+      }
+      if (event.key !== "Escape") return;
+      if (pendingDeleteId !== null) setPendingDeleteId(null);
+      else if (infoMessage) setInfoMessage(null);
+      else if (attachmentOpen) setAttachmentOpen(false);
+      else if (detailsOpen) setDetailsOpen(false);
+    }
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, [attachmentOpen, detailsOpen, infoMessage, pendingDeleteId]);
+
   async function sendMessage() {
     const body = draft.trim();
     if (body.length < 2 || sending) return;
@@ -88,8 +106,8 @@ export function ChatPanel({ conversation, messages, currentUser, contacts, token
     finally { setSending(false); setRestoreComposerFocus(true); }
   }
 
-  function composerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void sendMessage(); }
+  function composerKeyDown(event: ReactKeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey || !event.shiftKey)) { event.preventDefault(); void sendMessage(); }
   }
 
   function updateDraft(value: string) {
@@ -150,7 +168,7 @@ export function ChatPanel({ conversation, messages, currentUser, contacts, token
       {pendingDeleteId !== null && <ConfirmationDialog title="Delete selected message?" description="This message will be deleted from all your devices." confirmLabel="Delete" onCancel={() => setPendingDeleteId(null)} onConfirm={() => { void onDeleteMessage(pendingDeleteId); setPendingDeleteId(null); }} />}
       {detailsOpen && <ConversationDetails conversation={conversation} token={token} currentUser={currentUser} contacts={contacts} onClose={() => setDetailsOpen(false)} onChanged={onConversationChanged} onError={onError} />}
       {pendingAttachment && <div className="composer-attachment-tray"><MessageAttachment file={pendingAttachment.file} previewUrl={pendingAttachment.previewUrl} messageType={pendingAttachment.file.type.startsWith("image/") ? "image" : pendingAttachment.file.type.startsWith("video/") ? "video" : "file"} state={pendingAttachment.state} onRemove={pendingAttachment.state === "error" ? clearPendingAttachment : undefined} /></div>}
-      <footer className="composer-bar"><input ref={photoInputRef} className="attachment-file-input" type="file" accept="image/*,video/*" onChange={selectAttachment} /><input ref={fileInputRef} className="attachment-file-input" type="file" onChange={selectAttachment} /><button className="icon-button composer-external" aria-label="Emoji picker"><Icon name="emoji" size={22} /></button><div className="composer-field"><textarea ref={composerInputRef} value={draft} onChange={(event) => updateDraft(event.target.value)} onKeyDown={composerKeyDown} placeholder="Message" rows={1} aria-label="Message" disabled={sending} /></div><div ref={attachmentControlRef} className="attachment-control">{attachmentOpen && <AttachmentMenu onPhotos={() => photoInputRef.current?.click()} onFile={() => fileInputRef.current?.click()} />}<button className="icon-button composer-external" onClick={() => setAttachmentOpen((open) => !open)} aria-label="Add attachment" aria-expanded={attachmentOpen} disabled={sending}><Icon name="plus" size={22} /></button></div></footer>
+      <footer className="composer-bar"><input ref={photoInputRef} className="attachment-file-input" type="file" accept="image/*,video/*" onChange={selectAttachment} /><input ref={fileInputRef} className="attachment-file-input" type="file" onChange={selectAttachment} /><button className="icon-button composer-external" aria-label="Emoji picker"><Icon name="emoji" size={22} /></button><div className="composer-field"><textarea ref={composerInputRef} value={draft} onChange={(event) => updateDraft(event.target.value)} onKeyDown={composerKeyDown} placeholder="Message" rows={1} aria-label="Message" title="Send: Enter or ⌘/Ctrl Enter · New line: Shift Enter · Focus: ⌘/Ctrl E" aria-keyshortcuts="Enter Meta+Enter Control+Enter Meta+E Control+E" disabled={sending} /></div><div ref={attachmentControlRef} className="attachment-control">{attachmentOpen && <AttachmentMenu onPhotos={() => photoInputRef.current?.click()} onFile={() => fileInputRef.current?.click()} />}<button className="icon-button composer-external" onClick={() => setAttachmentOpen((open) => !open)} aria-label="Add attachment" aria-expanded={attachmentOpen} disabled={sending}><Icon name="plus" size={22} /></button></div></footer>
     </section>
   );
 }
