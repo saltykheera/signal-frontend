@@ -62,7 +62,7 @@ export function SignalReplicaAppView({ initialTab = "chats" }: { initialTab?: Ap
   useEffect(() => {
     const timer = setTimeout(() => {
       const savedTheme = localStorage.getItem("signal-theme") as Theme | null;
-      setTheme(savedTheme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+      setTheme(savedTheme || "light");
       void initialize();
     }, 0);
     return () => clearTimeout(timer);

@@ -23,7 +23,7 @@ export function SettingsRoute() {
   useEffect(() => {
     const timer = setTimeout(() => {
       const savedTheme = localStorage.getItem("signal-theme") as Theme | null;
-      setThemeState(savedTheme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+      setThemeState(savedTheme || "light");
       void initialize();
     }, 0);
     return () => clearTimeout(timer);
