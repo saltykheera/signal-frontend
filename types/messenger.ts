@@ -1,7 +1,7 @@
 export type Theme = "light" | "dark";
 export type AuthStep = "phone" | "otp" | "profile" | "app";
 export type AppTab = "chats" | "calls" | "stories";
-export type SettingsPage = "general" | "appearance" | "profile";
+export type SettingsPage = "general" | "appearance" | "profile" | "privacy" | "notifications" | "devices";
 export type ConversationId = string;
 
 export type Message = {
@@ -15,6 +15,7 @@ export type Message = {
   attachment?: ApiAttachment;
   senderName?: string | null;
   senderAvatarUrl?: string | null;
+  replyToMessageId?: number | null;
 };
 
 export type Conversation = {

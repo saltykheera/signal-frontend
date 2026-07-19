@@ -81,8 +81,8 @@ export const signalApi = {
   }),
   searchUsers: (token: string, query: string) => apiRequest<ApiUser[]>(`/users/search?q=${encodeURIComponent(query)}`, token),
   messages: (token: string, conversationId: number) => apiRequest<ApiMessage[]>(`/conversations/${conversationId}/messages`, token),
-  sendMessage: (token: string, conversationId: number, content: string, messageType: "text" | "image" | "file" | "video" = "text") => apiRequest<ApiMessage>(`/conversations/${conversationId}/messages`, token, {
-    method: "POST", body: JSON.stringify({ content, message_type: messageType }),
+  sendMessage: (token: string, conversationId: number, content: string, messageType: "text" | "image" | "file" | "video" = "text", replyToMessageId?: number) => apiRequest<ApiMessage>(`/conversations/${conversationId}/messages`, token, {
+    method: "POST", body: JSON.stringify({ content, message_type: messageType, reply_to_message_id: replyToMessageId }),
   }),
   uploadAttachment: (token: string, messageId: number, file: File) => {
     const data = new FormData();

@@ -19,7 +19,7 @@ type ChatPanelProps = {
   loading?: boolean;
   typingLabel?: string;
   onBack: () => void;
-  onSendText: (content: string) => Promise<void>;
+  onSendText: (content: string, replyToMessageId?: number) => Promise<void>;
   onSendAttachment: (file: File) => Promise<void>;
   onDeleteMessage: (messageId: number) => Promise<void>;
   onToggleReaction: (messageId: number, emoji: string) => Promise<void>;
@@ -34,6 +34,7 @@ export function ChatPanel({ conversation, messages, currentUser, contacts, token
   const [attachmentOpen, setAttachmentOpen] = useState(false);
   const [infoMessage, setInfoMessage] = useState<Message | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+  const [pendingReply, setPendingReply] = useState<Message | null>(null);
   const [sending, setSending] = useState(false);
   const [restoreComposerFocus, setRestoreComposerFocus] = useState(false);
   const [addingContact, setAddingContact] = useState(false);
@@ -50,7 +51,7 @@ export function ChatPanel({ conversation, messages, currentUser, contacts, token
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages.length]);
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDraft(""); setDetailsOpen(false); setPendingAttachment(null);
+      setDraft(""); setDetailsOpen(false); setPendingAttachment(null); setPendingReply(null);
       if (pendingUrlRef.current) URL.revokeObjectURL(pendingUrlRef.current);
       pendingUrlRef.current = null;
     }, 0);
@@ -100,9 +101,10 @@ export function ChatPanel({ conversation, messages, currentUser, contacts, token
   async function sendMessage() {
     const body = draft.trim();
     if (body.length < 2 || sending) return;
-    setDraft(""); setSending(true); onTyping(false);
-    try { await onSendText(body); }
-    catch (error) { setDraft(body); onError(error instanceof Error ? error.message : "Message could not be sent."); }
+    const replyTarget = pendingReply;
+    setDraft(""); setPendingReply(null); setSending(true); onTyping(false);
+    try { await onSendText(body, replyTarget?.id); }
+    catch (error) { setDraft(body); setPendingReply(replyTarget); onError(error instanceof Error ? error.message : "Message could not be sent."); }
     finally { setSending(false); setRestoreComposerFocus(true); }
   }
 
@@ -161,13 +163,15 @@ export function ChatPanel({ conversation, messages, currentUser, contacts, token
           const next = messages[index + 1];
           const first = !previous || previous.outgoing !== message.outgoing;
           const last = !next || next.outgoing !== message.outgoing;
-          return <div key={message.id} className={`message-row ${message.outgoing ? "outgoing" : "incoming"} ${first ? "cluster-first" : ""} ${last ? "cluster-last" : ""}`}><MessageBubble message={message} showSender={Boolean(conversation.group)} isDirectConversation={!conversation.group} onDelete={() => setPendingDeleteId(message.id)} onInfo={() => setInfoMessage(message)} onToggleReaction={(emoji) => onToggleReaction(message.id, emoji)} /></div>;
+          const replyTo = message.replyToMessageId ? messages.find((candidate) => candidate.id === message.replyToMessageId) : undefined;
+          return <div key={message.id} className={`message-row ${message.outgoing ? "outgoing" : "incoming"} ${first ? "cluster-first" : ""} ${last ? "cluster-last" : ""}`}><MessageBubble message={message} replyTo={replyTo} showSender={Boolean(conversation.group)} isDirectConversation={!conversation.group} onDelete={() => setPendingDeleteId(message.id)} onInfo={() => setInfoMessage(message)} onReply={() => { setPendingReply(message); composerInputRef.current?.focus(); }} onToggleReaction={(emoji) => onToggleReaction(message.id, emoji)} /></div>;
         })}<div ref={bottomRef} /></div>}
       </div>
       {infoMessage && <div className="message-info-backdrop" role="presentation"><section className="message-info-dialog" role="dialog" aria-modal="true" aria-labelledby="message-info-title"><h2 id="message-info-title">Message info</h2><p>{infoMessage.outgoing ? "Sent" : "Received"} at {infoMessage.time}</p><p>Status: {infoMessage.status || "sent"}</p><button type="button" onClick={() => setInfoMessage(null)}>Done</button></section></div>}
       {pendingDeleteId !== null && <ConfirmationDialog title="Delete selected message?" description="This message will be deleted from all your devices." confirmLabel="Delete" onCancel={() => setPendingDeleteId(null)} onConfirm={() => { void onDeleteMessage(pendingDeleteId); setPendingDeleteId(null); }} />}
       {detailsOpen && <ConversationDetails conversation={conversation} token={token} currentUser={currentUser} contacts={contacts} onClose={() => setDetailsOpen(false)} onChanged={onConversationChanged} onError={onError} />}
       {pendingAttachment && <div className="composer-attachment-tray"><MessageAttachment file={pendingAttachment.file} previewUrl={pendingAttachment.previewUrl} messageType={pendingAttachment.file.type.startsWith("image/") ? "image" : pendingAttachment.file.type.startsWith("video/") ? "video" : "file"} state={pendingAttachment.state} onRemove={pendingAttachment.state === "error" ? clearPendingAttachment : undefined} /></div>}
+      {pendingReply && <div className="composer-reply-bar"><span><strong>Replying to {pendingReply.outgoing ? "yourself" : pendingReply.senderName || "message"}</strong><small>{pendingReply.body || (pendingReply.attachment ? "Attachment" : "Message")}</small></span><button type="button" className="icon-button" onClick={() => setPendingReply(null)} aria-label="Cancel reply"><Icon name="x" size={16} /></button></div>}
       <footer className="composer-bar"><input ref={photoInputRef} className="attachment-file-input" type="file" accept="image/*,video/*" onChange={selectAttachment} /><input ref={fileInputRef} className="attachment-file-input" type="file" onChange={selectAttachment} /><button className="icon-button composer-external" aria-label="Emoji picker"><Icon name="emoji" size={22} /></button><div className="composer-field"><textarea ref={composerInputRef} value={draft} onChange={(event) => updateDraft(event.target.value)} onKeyDown={composerKeyDown} placeholder="Message" rows={1} aria-label="Message" title="Send: Enter or ⌘/Ctrl Enter · New line: Shift Enter · Focus: ⌘/Ctrl E" aria-keyshortcuts="Enter Meta+Enter Control+Enter Meta+E Control+E" disabled={sending} /></div><div ref={attachmentControlRef} className="attachment-control">{attachmentOpen && <AttachmentMenu onPhotos={() => photoInputRef.current?.click()} onFile={() => fileInputRef.current?.click()} />}<button className="icon-button composer-external" onClick={() => setAttachmentOpen((open) => !open)} aria-label="Add attachment" aria-expanded={attachmentOpen} disabled={sending}><Icon name="plus" size={22} /></button></div></footer>
     </section>
   );

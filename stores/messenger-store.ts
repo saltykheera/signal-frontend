@@ -37,7 +37,7 @@ function mapMessage(item: ApiMessage, currentUserId: number): Message {
     id: item.id, body: item.content, outgoing: item.sender_id === currentUserId,
     time: formatTimestamp(item.created_at), status: item.status,
     reactions: item.reactions, messageType: item.message_type,
-    attachment: item.attachments[0], senderName: item.sender_name, senderAvatarUrl: item.sender_avatar_url,
+    attachment: item.attachments[0], senderName: item.sender_name, senderAvatarUrl: item.sender_avatar_url, replyToMessageId: item.reply_to_message_id,
   };
 }
 
@@ -78,7 +78,7 @@ type MessengerActions = {
   findUsers: (query: string) => Promise<ApiUser[]>;
   startChat: (user: ApiUser) => Promise<ConversationId | null>;
   createGroup: (name: string, members: number[]) => Promise<ConversationId | null>;
-  sendText: (content: string) => Promise<void>;
+  sendText: (content: string, replyToMessageId?: number) => Promise<void>;
   sendAttachment: (file: File) => Promise<void>;
   deleteMessage: (messageId: number) => Promise<void>;
   toggleReaction: (messageId: number, emoji: string) => Promise<void>;
@@ -335,14 +335,14 @@ export function createMessengerStore() {
         } catch (error) { report(error, "Group could not be created."); return null; }
       },
 
-      sendText: async (content) => {
+      sendText: async (content, replyToMessageId) => {
         const { authToken: token, currentUser, selectedConversationId: id } = get();
         if (!token || !currentUser || !id) return;
         const tempId = -Date.now();
-        const optimistic: Message = { id: tempId, body: content, outgoing: true, time: "Now", status: "sending", reactions: [], messageType: "text", senderName: currentUser.display_name };
+        const optimistic: Message = { id: tempId, body: content, outgoing: true, time: "Now", status: "sending", reactions: [], messageType: "text", senderName: currentUser.display_name, replyToMessageId };
         set((state) => ({ messages: { ...state.messages, [id]: [...(state.messages[id] || []), optimistic] } }));
         try {
-          const created = await signalApi.sendMessage(token, Number(id), content);
+          const created = await signalApi.sendMessage(token, Number(id), content, "text", replyToMessageId);
           set((state) => ({ messages: { ...state.messages, [id]: (state.messages[id] || []).map((message) => message.id === tempId ? mapMessage(created, currentUser.id) : message) } }));
           await get().loadConversations();
         } catch (error) {

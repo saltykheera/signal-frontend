@@ -11,9 +11,11 @@ backend in the sibling `signal-clone/signal-backend` directory.
 - Persistent contacts, user search, direct conversations, groups, and messages
 - Real-time message delivery, typing, presence, and read-receipt updates over an
   authenticated WebSocket
-- Sending/delivered/read states, unread counts, timestamps, reactions, images,
-  videos, and shadcn/ui file/image attachment cards with upload states (10 MB maximum)
-- Group member view with administrator add/remove controls
+- Sending/delivered/read states, unread counts, timestamps, quoted replies,
+  reactions, images, videos, and shadcn/ui file/image attachment cards with upload states (10 MB maximum)
+- Group member view with administrator add/remove/delete controls and member leave
+- Keyboard shortcuts for new chat, search, composer focus, sending, settings,
+  closing overlays, and conversation navigation
 - Seeded users/history, light and dark appearance, responsive layouts, and Calls
   and Stories placeholders
 
@@ -63,7 +65,7 @@ All accounts use OTP `123456`.
 
 Vishal's account has a pre-populated direct chat, group, contacts, and history.
 Open a second browser profile as Maya to verify live messaging, presence, typing,
-reactions, and read receipts.
+replies, reactions, and read receipts.
 
 ## Architecture
 
@@ -106,6 +108,7 @@ The base contract is in [apis.md](./apis.md). Implemented extensions include:
 - `GET/PATCH /conversations/{id}`
 - `POST /conversations/{id}/members`
 - `DELETE /conversations/{id}/members/{userId}`
+- `DELETE /conversations/{id}` (administrator-only group deletion)
 - `DELETE /messages/{id}`
 - `WS /ws?token=<jwt>`
 
