@@ -29,6 +29,7 @@ export function SignalReplicaAppView({ initialTab = "chats" }: { initialTab?: Ap
     currentUser: state.currentUser,
     conversations: state.conversations,
     contacts: state.contacts,
+    contactsLoading: state.contactsLoading,
     selectedConversationId: state.selectedConversationId,
     messages: state.messages,
     loadingConversationId: state.loadingConversationId,
@@ -49,6 +50,8 @@ export function SignalReplicaAppView({ initialTab = "chats" }: { initialTab?: Ap
     toggleReaction: state.toggleReaction,
     sendTyping: state.sendTyping,
     loadConversations: state.loadConversations,
+    loadContacts: state.loadContacts,
+    addContact: state.addContact,
     showToast: state.showToast,
   })));
   const initialize = store.initialize;
@@ -88,10 +91,10 @@ export function SignalReplicaAppView({ initialTab = "chats" }: { initialTab?: Ap
       <NavigationRail tab={tab} setTab={(nextTab) => { setTab(nextTab); setMobileChatOpen(false); }} openSettings={() => router.push("/settings")} onToggleRail={() => setRailCollapsed((collapsed) => !collapsed)} />
       {tab === "chats" ? <>
         {newChatOpen
-          ? <NewChatScreen onClose={() => setNewChatOpen(false)} contacts={store.contacts} onFindUsers={store.findUsers} onStartChat={handleStartChat} onCreateGroup={handleCreateGroup} />
+          ? <NewChatScreen onClose={() => setNewChatOpen(false)} contacts={store.contacts} contactsLoading={store.contactsLoading} onRefreshContacts={store.loadContacts} onFindUsers={store.findUsers} onStartChat={handleStartChat} onCreateGroup={handleCreateGroup} />
           : <ConversationList conversations={store.conversations} selected={store.selectedConversationId || ""} onToggleRail={() => setRailCollapsed((collapsed) => !collapsed)} onNewChat={() => setNewChatOpen(true)} onSelect={(id) => { store.selectConversation(id); setMobileChatOpen(true); }} />}
         {activeConversation
-          ? <ChatPanel conversation={activeConversation} messages={store.messages[activeConversation.id] || []} currentUser={store.currentUser} contacts={store.contacts} token={store.authToken} loading={store.loadingConversationId === activeConversation.id} typingLabel={store.typingByConversation[activeConversation.id]} onBack={() => setMobileChatOpen(false)} onSendText={store.sendText} onSendAttachment={store.sendAttachment} onDeleteMessage={store.deleteMessage} onToggleReaction={store.toggleReaction} onTyping={store.sendTyping} onConversationChanged={store.loadConversations} onError={store.showToast} />
+          ? <ChatPanel conversation={activeConversation} messages={store.messages[activeConversation.id] || []} currentUser={store.currentUser} contacts={store.contacts} token={store.authToken} loading={store.loadingConversationId === activeConversation.id} typingLabel={store.typingByConversation[activeConversation.id]} onBack={() => setMobileChatOpen(false)} onSendText={store.sendText} onSendAttachment={store.sendAttachment} onDeleteMessage={store.deleteMessage} onToggleReaction={store.toggleReaction} onAddContact={store.addContact} onTyping={store.sendTyping} onConversationChanged={store.loadConversations} onError={store.showToast} />
           : <section className="empty-chat"><span>💬</span><h2>Your Signal conversations</h2><p>Choose a chat or start a new private conversation.</p></section>}
       </> : <ComingSoon tab={tab} />}
     </div>

@@ -7,10 +7,11 @@ import type { ApiUser } from "@/types/messenger";
 type GroupCreationFlowProps = {
   onClose: () => void;
   contacts: ApiUser[];
+  loading?: boolean;
   onCreate: (name: string, members: number[]) => Promise<void>;
 };
 
-export function GroupCreationFlow({ onClose, contacts: availableContacts, onCreate }: GroupCreationFlowProps) {
+export function GroupCreationFlow({ onClose, contacts: availableContacts, loading = false, onCreate }: GroupCreationFlowProps) {
   const [step, setStep] = useState<"members" | "name">("members");
   const [query, setQuery] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
@@ -52,6 +53,8 @@ export function GroupCreationFlow({ onClose, contacts: availableContacts, onCrea
             <span className={`group-member-select ${selected ? "selected" : ""}`} aria-hidden="true">{selected && "✓"}</span>
           </button>;
         })}
+        {loading && <p className="new-chat-empty">Loading contacts…</p>}
+        {!loading && !contacts.length && <p className="new-chat-empty">{query ? "No contacts found" : "No contacts available yet"}</p>}
       </section>
     </div>
     <footer className="group-flow-footer"><button type="button" className="primary-button" disabled={!selectedMembers.length} onClick={() => setStep("name")}>Next</button></footer>

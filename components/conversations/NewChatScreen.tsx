@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ApiUser } from "@/types/messenger";
 import { Icon } from "@/components/ui/Icon";
 import { GroupCreationFlow } from "@/components/conversations/GroupCreationFlow";
@@ -10,6 +10,8 @@ import { PhoneNumberLookupScreen } from "@/components/conversations/PhoneNumberL
 type NewChatScreenProps = {
   onClose: () => void;
   contacts: ApiUser[];
+  contactsLoading: boolean;
+  onRefreshContacts: () => Promise<void>;
   onFindUsers: (query: string) => Promise<ApiUser[]>;
   onStartChat: (user: ApiUser) => Promise<void>;
   onCreateGroup: (name: string, members: number[]) => Promise<void>;
@@ -21,14 +23,16 @@ const actions = [
   { label: "Find by phone number", icon: "number" as const },
 ];
 
-export function NewChatScreen({ onClose, contacts: availableContacts, onFindUsers, onStartChat, onCreateGroup }: NewChatScreenProps) {
+export function NewChatScreen({ onClose, contacts: availableContacts, contactsLoading, onRefreshContacts, onFindUsers, onStartChat, onCreateGroup }: NewChatScreenProps) {
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [findingByUsername, setFindingByUsername] = useState(false);
   const [findingByPhone, setFindingByPhone] = useState(false);
   const [query, setQuery] = useState("");
   const contacts = useMemo(() => availableContacts.filter((contact) => `${contact.display_name} ${contact.username || ""} ${contact.phone || ""}`.toLowerCase().includes(query.trim().toLowerCase())), [availableContacts, query]);
 
-  if (creatingGroup) return <GroupCreationFlow onClose={() => setCreatingGroup(false)} contacts={availableContacts} onCreate={onCreateGroup} />;
+  useEffect(() => { void onRefreshContacts(); }, [onRefreshContacts]);
+
+  if (creatingGroup) return <GroupCreationFlow onClose={() => setCreatingGroup(false)} contacts={availableContacts} loading={contactsLoading} onCreate={onCreateGroup} />;
   if (findingByUsername) return <UsernameLookupScreen onClose={() => setFindingByUsername(false)} onFind={onFindUsers} onSelect={onStartChat} />;
   if (findingByPhone) return <PhoneNumberLookupScreen onClose={() => setFindingByPhone(false)} onFind={onFindUsers} onSelect={onStartChat} />;
 
@@ -60,7 +64,8 @@ export function NewChatScreen({ onClose, contacts: availableContacts, onFindUser
               <Icon name="person" size={16} className="new-chat-contact-mark" />
             </button>)}
           </div>
-          {query && !contacts.length && <p className="new-chat-empty">No contacts found</p>}
+          {contactsLoading && <p className="new-chat-empty">Loading contacts…</p>}
+          {!contactsLoading && !contacts.length && <p className="new-chat-empty">{query ? "No contacts found" : "No contacts available yet"}</p>}
         </section>
       </div>
     </aside>

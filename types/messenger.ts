@@ -14,6 +14,7 @@ export type Message = {
   messageType?: "text" | "image" | "file" | "video";
   attachment?: ApiAttachment;
   senderName?: string | null;
+  senderAvatarUrl?: string | null;
 };
 
 export type Conversation = {

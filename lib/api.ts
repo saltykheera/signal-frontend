@@ -74,6 +74,7 @@ export const signalApi = {
     method: "POST", body: JSON.stringify({ user_id: userId }),
   }),
   removeGroupMember: (token: string, id: number, userId: number) => apiRequest<void>(`/conversations/${id}/members/${userId}`, token, { method: "DELETE" }),
+  deleteGroup: (token: string, id: number) => apiRequest<void>(`/conversations/${id}`, token, { method: "DELETE" }),
   contacts: (token: string) => apiRequest<ApiUser[]>("/contacts", token),
   addContact: (token: string, userId: number) => apiRequest<ApiUser>("/contacts", token, {
     method: "POST", body: JSON.stringify({ contactUserId: userId }),

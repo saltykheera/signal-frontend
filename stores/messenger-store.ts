@@ -37,7 +37,7 @@ function mapMessage(item: ApiMessage, currentUserId: number): Message {
     id: item.id, body: item.content, outgoing: item.sender_id === currentUserId,
     time: formatTimestamp(item.created_at), status: item.status,
     reactions: item.reactions, messageType: item.message_type,
-    attachment: item.attachments[0], senderName: item.sender_name,
+    attachment: item.attachments[0], senderName: item.sender_name, senderAvatarUrl: item.sender_avatar_url,
   };
 }
 
@@ -52,6 +52,7 @@ type MessengerState = {
   currentUser: ApiUser | null;
   conversations: Conversation[];
   contacts: ApiUser[];
+  contactsLoading: boolean;
   selectedConversationId: ConversationId | null;
   messages: Record<ConversationId, Message[]>;
   loadingConversationId: ConversationId | null;
@@ -71,6 +72,7 @@ type MessengerActions = {
   showToast: (message: string) => void;
   loadConversations: () => Promise<void>;
   loadContacts: () => Promise<void>;
+  addContact: (userId: number) => Promise<boolean>;
   selectConversation: (id: ConversationId) => void;
   loadMessages: (id: ConversationId) => Promise<void>;
   findUsers: (query: string) => Promise<ApiUser[]>;
@@ -98,6 +100,7 @@ const initialState: MessengerState = {
   currentUser: null,
   conversations: [],
   contacts: [],
+  contactsLoading: false,
   selectedConversationId: null,
   messages: {},
   loadingConversationId: null,
@@ -256,8 +259,31 @@ export function createMessengerStore() {
       loadContacts: async () => {
         const token = get().authToken;
         if (!token) return;
+        set({ contactsLoading: true });
         try { set({ contacts: await signalApi.contacts(token) }); }
         catch (error) { report(error, "Contacts could not be loaded."); }
+        finally { set({ contactsLoading: false }); }
+      },
+
+      addContact: async (userId) => {
+        const token = get().authToken;
+        if (!token) return false;
+        try {
+          const contact = await signalApi.addContact(token, userId);
+          set((state) => ({
+            contacts: state.contacts.some((item) => item.id === contact.id)
+              ? state.contacts
+              : [contact, ...state.contacts],
+          }));
+          return true;
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 409) {
+            await get().loadContacts();
+            return true;
+          }
+          report(error, "Contact could not be added.");
+          return false;
+        }
       },
 
       selectConversation: (id) => {
@@ -390,6 +416,17 @@ export function createMessengerStore() {
             const id = String(payload.conversation_id), messageId = Number(payload.message_id);
             set((state) => ({ messages: { ...state.messages, [id]: (state.messages[id] || []).filter((message) => message.id !== messageId) } }));
             void get().loadConversations();
+          } else if (payload.type === "conversation.deleted") {
+            const id = String(payload.conversation_id);
+            set((state) => {
+              const conversations = state.conversations.filter((conversation) => conversation.id !== id);
+              const messages = Object.fromEntries(Object.entries(state.messages).filter(([conversationId]) => conversationId !== id));
+              return {
+                conversations,
+                messages,
+                selectedConversationId: state.selectedConversationId === id ? conversations[0]?.id || null : state.selectedConversationId,
+              };
+            });
           } else if (payload.type === "reaction.added") {
             const reaction = payload.reaction as ApiReaction;
             set((state) => ({ messages: Object.fromEntries(Object.entries(state.messages).map(([id, list]) => [id, list.map((message) => message.id === reaction.message_id ? { ...message, reactions: [...(message.reactions || []).filter((item) => item.id !== reaction.id), reaction] } : message)])) }));
