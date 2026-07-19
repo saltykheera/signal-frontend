@@ -1,14 +1,14 @@
 "use client";
 
 import { type ChangeEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
-import type { ApiConversationDetail, ApiUser, Conversation, Message } from "@/types/messenger";
+import type { ApiConversationDetail, ApiConversationMember, ApiUser, Conversation, Message } from "@/types/messenger";
 import { signalApi } from "@/lib/api";
 import { Avatar } from "@/components/ui/Avatar";
 import { Icon } from "@/components/ui/Icon";
 import { AttachmentMenu } from "@/components/chat/AttachmentMenu";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { MessageAttachment } from "@/components/chat/MessageAttachment";
-import { DeleteMessageDialog } from "@/components/chat/DeleteMessageDialog";
+import { ConfirmationDialog } from "@/components/chat/ConfirmationDialog";
 
 type ChatPanelProps = {
   conversation: Conversation;
@@ -123,7 +123,7 @@ export function ChatPanel({ conversation, messages, currentUser, contacts, token
         })}<div ref={bottomRef} /></div>}
       </div>
       {infoMessage && <div className="message-info-backdrop" role="presentation"><section className="message-info-dialog" role="dialog" aria-modal="true" aria-labelledby="message-info-title"><h2 id="message-info-title">Message info</h2><p>{infoMessage.outgoing ? "Sent" : "Received"} at {infoMessage.time}</p><p>Status: {infoMessage.status || "sent"}</p><button type="button" onClick={() => setInfoMessage(null)}>Done</button></section></div>}
-      {pendingDeleteId !== null && <DeleteMessageDialog onCancel={() => setPendingDeleteId(null)} onConfirm={() => { void onDeleteMessage(pendingDeleteId); setPendingDeleteId(null); }} />}
+      {pendingDeleteId !== null && <ConfirmationDialog title="Delete selected message?" description="This message will be deleted from all your devices." confirmLabel="Delete" onCancel={() => setPendingDeleteId(null)} onConfirm={() => { void onDeleteMessage(pendingDeleteId); setPendingDeleteId(null); }} />}
       {detailsOpen && <ConversationDetails conversation={conversation} token={token} currentUser={currentUser} contacts={contacts} onClose={() => setDetailsOpen(false)} onChanged={onConversationChanged} onError={onError} />}
       {pendingAttachment && <div className="composer-attachment-tray"><MessageAttachment file={pendingAttachment.file} previewUrl={pendingAttachment.previewUrl} messageType={pendingAttachment.file.type.startsWith("image/") ? "image" : pendingAttachment.file.type.startsWith("video/") ? "video" : "file"} state={pendingAttachment.state} onRemove={pendingAttachment.state === "error" ? clearPendingAttachment : undefined} /></div>}
       <footer className="composer-bar"><input ref={photoInputRef} className="attachment-file-input" type="file" accept="image/*,video/*" onChange={selectAttachment} /><input ref={fileInputRef} className="attachment-file-input" type="file" onChange={selectAttachment} /><button className="icon-button composer-external" aria-label="Emoji picker"><Icon name="emoji" size={22} /></button><div className="composer-field"><textarea value={draft} onChange={(event) => updateDraft(event.target.value)} onKeyDown={composerKeyDown} placeholder="Message" rows={1} aria-label="Message" disabled={sending} /></div><div ref={attachmentControlRef} className="attachment-control">{attachmentOpen && <AttachmentMenu onPhotos={() => photoInputRef.current?.click()} onFile={() => fileInputRef.current?.click()} />}<button className="icon-button composer-external" onClick={() => setAttachmentOpen((open) => !open)} aria-label="Add attachment" aria-expanded={attachmentOpen} disabled={sending}><Icon name="plus" size={22} /></button></div></footer>
@@ -134,6 +134,7 @@ export function ChatPanel({ conversation, messages, currentUser, contacts, token
 function ConversationDetails({ conversation, token, currentUser, contacts, onClose, onChanged, onError }: { conversation: Conversation; token: string; currentUser: ApiUser; contacts: ApiUser[]; onClose: () => void; onChanged: () => Promise<void>; onError: (message: string) => void }) {
   const [detail, setDetail] = useState<ApiConversationDetail | null>(null);
   const [adding, setAdding] = useState(false);
+  const [pendingRemoval, setPendingRemoval] = useState<ApiConversationMember | null>(null);
   useEffect(() => { signalApi.conversation(token, Number(conversation.id)).then(setDetail).catch((error) => onError(error instanceof Error ? error.message : "Could not load conversation details.")); }, [conversation.id, token, onError]);
   const me = detail?.members.find((member) => member.id === currentUser.id);
   const candidates = contacts.filter((contact) => !detail?.members.some((member) => member.id === contact.id));
@@ -143,5 +144,5 @@ function ConversationDetails({ conversation, token, currentUser, contacts, onClo
     catch (error) { onError(error instanceof Error ? error.message : "Member could not be removed."); }
   }
 
-  return <aside className="conversation-details" aria-label="Conversation details"><header><button className="icon-button" onClick={onClose} aria-label="Close details"><Icon name="back" /></button><h2>Conversation info</h2></header><div className="conversation-details-body"><Avatar conversation={conversation} size={76} /><h3>{conversation.name}</h3>{detail?.type === "group" && <><div className="details-section-title"><span>{detail.members.length} members</span>{me?.role === "admin" && candidates.length > 0 && <button type="button" onClick={() => setAdding((value) => !value)}>Add member</button>}</div>{adding && <div className="member-candidates">{candidates.map((candidate) => <button key={candidate.id} onClick={async () => { try { setDetail(await signalApi.addGroupMember(token, detail.id, candidate.id)); setAdding(false); await onChanged(); } catch (error) { onError(error instanceof Error ? error.message : "Member could not be added."); } }}>{candidate.display_name}</button>)}</div>}<div className="member-list">{detail.members.map((member) => <div key={member.id}><span className="member-avatar">{member.display_name.slice(0, 2).toUpperCase()}</span><span><strong>{member.display_name}{member.id === currentUser.id ? " (You)" : ""}</strong><small>{member.role}</small></span>{me?.role === "admin" && member.id !== currentUser.id && <button onClick={() => void remove(member.id)}>Remove</button>}</div>)}</div></>}</div></aside>;
+  return <aside className="conversation-details" aria-label="Conversation details"><header><button className="icon-button" onClick={onClose} aria-label="Close details"><Icon name="back" /></button><h2>Conversation info</h2></header><div className="conversation-details-body"><Avatar conversation={conversation} size={76} /><h3>{conversation.name}</h3>{detail?.type === "group" && <><div className="details-section-title"><span>{detail.members.length} members</span>{me?.role === "admin" && candidates.length > 0 && <button type="button" onClick={() => setAdding((value) => !value)}>Add member</button>}</div>{adding && <div className="member-candidates">{candidates.map((candidate) => <button key={candidate.id} onClick={async () => { try { setDetail(await signalApi.addGroupMember(token, detail.id, candidate.id)); setAdding(false); await onChanged(); } catch (error) { onError(error instanceof Error ? error.message : "Member could not be added."); } }}>{candidate.display_name}</button>)}</div>}<div className="member-list">{detail.members.map((member) => <div key={member.id}><span className="member-avatar">{member.display_name.slice(0, 2).toUpperCase()}</span><span><strong>{member.display_name}{member.id === currentUser.id ? " (You)" : ""}</strong><small>{member.role}</small></span>{me?.role === "admin" && member.id !== currentUser.id && <button type="button" onClick={() => setPendingRemoval(member)}>Remove</button>}</div>)}</div></>}</div>{pendingRemoval && <ConfirmationDialog title={`Remove ${pendingRemoval.display_name}?`} description={`${pendingRemoval.display_name} will no longer be able to send or receive messages in this group.`} confirmLabel="Remove" onCancel={() => setPendingRemoval(null)} onConfirm={() => { void remove(pendingRemoval.id); setPendingRemoval(null); }} />}</aside>;
 }
