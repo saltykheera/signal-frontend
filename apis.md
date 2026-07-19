@@ -1,5 +1,4 @@
-# Backend directory
-/Users/vishalkumar/signal-clone
+
 
 # Signal Clone Backend API Guide
 
